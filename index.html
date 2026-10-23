@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f0a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Игра для пар: вопросы, задания, правда или действие">
+  <title>Мы вдвоём — Игра для пар</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-start: #0f0a1a; --bg-mid: #1a1035; --bg-end: #2a1548;
+      --card: rgba(45, 27, 78, 0.9); --card-solid: #2d1b4e;
+      --accent: #ff6b9d; --accent-glow: rgba(255, 107, 157, 0.5);
+      --accent2: #c44569; --gold: #ffd56b; --text: #ffffff; --muted: #a89bb8;
+      --border: rgba(255, 255, 255, 0.09); --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      --input-bg: rgba(0,0,0,0.28); --success: #5eead4;
+      --tg-safe-top: env(safe-area-inset-top, 0px); --tg-safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [data-theme="light"] {
+      --bg-start: #fff5f8; --bg-mid: #ffe8f0; --bg-end: #f3e8ff;
+      --card: rgba(255, 255, 255, 0.94); --card-solid: #ffffff;
+      --accent: #e84a7f; --accent-glow: rgba(232, 74, 127, 0.35);
+      --accent2: #c44569; --gold: #d4a017; --text: #2d1b3d; --muted: #7a6a8a;
+      --border: rgba(45, 27, 61, 0.1); --shadow: 0 12px 36px rgba(180, 100, 140, 0.14);
+      --input-bg: rgba(255,255,255,0.85); --success: #0d9488;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      height: 100%; font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(165deg, var(--bg-start) 0%, var(--bg-mid) 45%, var(--bg-end) 100%);
+      background-attachment: fixed; color: var(--text); overflow-x: hidden;
+      -webkit-font-smoothing: antialiased; transition: background 0.45s ease, color 0.45s ease;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background: radial-gradient(ellipse 80% 50% at 15% -5%, rgba(255, 107, 157, 0.16), transparent 55%),
+        radial-gradient(ellipse 55% 40% at 95% 105%, rgba(196, 69, 105, 0.12), transparent 50%);
+      animation: bgPulse 12s ease-in-out infinite alternate;
+    }
+    [data-theme="light"] body::before {
+      background: radial-gradient(ellipse 80% 50% at 15% -5%, rgba(255, 107, 157, 0.1), transparent 55%),
+        radial-gradient(ellipse 55% 40% at 95% 105%, rgba(196, 69, 105, 0.07), transparent 50%);
+    }
+    @keyframes bgPulse { 0% { opacity: 1; } 100% { opacity: 0.7; } }
+    .container {
+      position: relative; z-index: 1; max-width: 440px; margin: 0 auto;
+      padding: calc(12px + var(--tg-safe-top)) 16px calc(16px + var(--tg-safe-bottom));
+      min-height: 100%; height: 100%; display: flex; flex-direction: column;
+    }
+    .header { text-align: center; padding: 10px 0 4px; position: relative; }
+    .logo {
+      font-size: 28px; font-weight: 900; letter-spacing: -0.5px;
+      background: linear-gradient(115deg, #ff8fab 0%, #ff6b9d 35%, #c44569 65%, #ffd56b 100%);
+      background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; animation: logoShine 5s linear infinite;
+    }
+    [data-theme="light"] .logo {
+      background: linear-gradient(115deg, #e84a7f, #c44569, #d4a017);
+      background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+    }
+    @keyframes logoShine { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+    .subtitle { color: var(--muted); font-size: 12.5px; font-weight: 600; margin-top: 4px; animation: fadeIn 0.6s ease 0.15s both; }
+    .top-bar { position: absolute; top: 8px; right: 0; display: flex; gap: 6px; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(8px);
+    }
+    .icon-btn:active { transform: scale(0.88); }
+    .screen { display: none; flex: 1; flex-direction: column; }
+    .screen.active { display: flex; animation: screenIn 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+    #menu.screen.active {
+      min-height: 0;
+    }
+    #menu .stats { margin-top: auto; padding-top: 12px; }
+    #menu .footer { padding-top: 6px; }
+    @keyframes screenIn { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes cardPop { 0% { transform: scale(0.94); opacity: 0.6; } 60% { transform: scale(1.02); } 100% { transform: scale(1); opacity: 1; } }
+
+    /* Level color themes */
+    body[data-level="light"] {
+      --accent: #f0b429;
+      --accent-glow: rgba(240, 180, 41, 0.4);
+      --accent2: #e89b2d;
+    }
+    body[data-level="romantic"] {
+      --accent: #ff5a8a;
+      --accent-glow: rgba(255, 90, 138, 0.5);
+      --accent2: #e8436f;
+    }
+    body[data-level="spicy"] {
+      --accent: #ff3d2e;
+      --accent-glow: rgba(255, 61, 46, 0.55);
+      --accent2: #ff6b1a;
+    }
+    body[data-level="light"] .card::before {
+      background: linear-gradient(90deg, #f0b429, #ffe08a, #f0b429, #ffe08a);
+      background-size: 200% 100%;
+    }
+    body[data-level="romantic"] .card::before {
+      background: linear-gradient(90deg, #ff5a8a, #c44569, #ff8fab, #ff5a8a);
+      background-size: 200% 100%;
+    }
+    body[data-level="spicy"] .card::before {
+      background: linear-gradient(90deg, #ff3d2e, #ff6b1a, #ffcc00, #ff3d2e);
+      background-size: 200% 100%;
+    }
+    body[data-level="light"] .btn-primary {
+      background: linear-gradient(135deg, #f0b429 0%, #e89b2d 100%);
+      box-shadow: 0 6px 22px rgba(240, 180, 41, 0.35);
+    }
+    body[data-level="romantic"] .btn-primary {
+      background: linear-gradient(135deg, #ff5a8a 0%, #e8436f 100%);
+      box-shadow: 0 6px 22px rgba(255, 90, 138, 0.4);
+    }
+    body[data-level="spicy"] .btn-primary {
+      background: linear-gradient(135deg, #ff3d2e 0%, #ff6b1a 100%);
+      box-shadow: 0 6px 22px rgba(255, 61, 46, 0.45);
+    }
+    body[data-level="light"] .card-badge {
+      background: rgba(240, 180, 41, 0.15);
+      border-color: rgba(240, 180, 41, 0.35);
+      color: #f0b429;
+    }
+    body[data-level="romantic"] .card-badge {
+      background: rgba(255, 90, 138, 0.15);
+      border-color: rgba(255, 90, 138, 0.35);
+      color: #ff5a8a;
+    }
+    body[data-level="spicy"] .card-badge {
+      background: rgba(255, 61, 46, 0.15);
+      border-color: rgba(255, 61, 46, 0.4);
+      color: #ff6b3d;
+    }
+    body[data-level] .menu-btn .icon-wrap,
+    body[data-level] .card,
+    body[data-level] .btn-primary,
+    body[data-level] .card-badge,
+    body[data-level] .card::before {
+      transition: background 0.55s ease, border-color 0.55s ease, color 0.55s ease, box-shadow 0.55s ease;
+    }
+
+    .intensity {
+      position: relative;
+      display: flex; gap: 0; margin: 12px 0 10px; padding: 4px;
+      background: rgba(0,0,0,0.22); border-radius: 18px; border: 1px solid var(--border);
+      animation: fadeIn 0.5s ease 0.1s both;
+      overflow: hidden;
+    }
+    [data-theme="light"] .intensity { background: rgba(255,255,255,0.55); }
+    .intensity-pill {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: calc((100% - 8px) / 3);
+      height: calc(100% - 8px);
+      border-radius: 14px;
+      z-index: 0;
+      pointer-events: none;
+      transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+                  background 0.55s ease,
+                  box-shadow 0.55s ease;
+      box-shadow: none;
+    }
+    .intensity[data-level="light"] .intensity-pill {
+      transform: translateX(0);
+      background: linear-gradient(135deg, rgba(255, 214, 107, 0.4), rgba(255, 180, 80, 0.22));
+      box-shadow: none;
+    }
+    .intensity[data-level="romantic"] .intensity-pill {
+      transform: translateX(100%);
+      background: linear-gradient(135deg, rgba(255, 107, 157, 0.4), rgba(196, 69, 105, 0.25));
+      box-shadow: none;
+    }
+    .intensity[data-level="spicy"] .intensity-pill {
+      transform: translateX(200%);
+      background: linear-gradient(135deg, rgba(255, 80, 80, 0.45), rgba(255, 40, 100, 0.3));
+      box-shadow: none;
+    }
+    .int-btn {
+      position: relative;
+      z-index: 1;
+      flex: 1; padding: 10px 4px; border-radius: 12px; border: none; background: transparent;
+      color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: color 0.3s ease, transform 0.25s ease;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .int-btn span {
+      font-size: 17px; line-height: 1;
+      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .int-btn.active {
+      color: var(--text);
+      background: transparent;
+      box-shadow: none;
+      transform: none;
+    }
+    .int-btn.active span {
+      transform: scale(1.12);
+      filter: none;
+    }
+    .int-btn:not(.active):active span { transform: scale(0.9); }
+    .intensity.switching .int-btn span {
+      transition: transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1), filter 0.3s, opacity 0.25s;
+    }
+    /* Accent tint on menu when intensity changes */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-auto-rows: 1fr;
+      gap: 10px;
+      margin-top: 8px;
+      flex: 1 1 auto;
+      align-content: stretch;
+      min-height: 280px;
+      transition: filter 0.45s ease;
+    }
+    body[data-level="light"] .menu-btn .icon-wrap {
+      background: linear-gradient(145deg, rgba(255, 214, 107, 0.28), rgba(255, 180, 80, 0.15));
+    }
+    body[data-level="romantic"] .menu-btn .icon-wrap {
+      background: linear-gradient(145deg, rgba(255,107,157,0.28), rgba(196,69,105,0.16));
+    }
+    body[data-level="spicy"] .menu-btn .icon-wrap {
+      background: linear-gradient(145deg, rgba(255, 80, 80, 0.32), rgba(255, 40, 100, 0.18));
+    }
+    body[data-level="light"] .menu-btn.accent {
+      border-color: rgba(255, 200, 80, 0.35);
+    }
+    body[data-level="romantic"] .menu-btn.accent {
+      border-color: rgba(255,107,157,0.35);
+    }
+    body[data-level="spicy"] .menu-btn.accent {
+      border-color: rgba(255, 80, 80, 0.4);
+    }
+    .menu-grid.level-flash {
+      animation: levelFlash 0.55s ease;
+    }
+    @keyframes levelFlash {
+      0% { opacity: 1; }
+      50% { opacity: 0.92; }
+      100% { opacity: 1; }
+    }
+    .menu-btn {
+      position: relative; background: var(--card); backdrop-filter: blur(14px);
+      border: 1px solid var(--border); border-radius: 20px; padding: 14px 8px;
+      height: 100%;
+      min-height: 88px;
+      justify-content: center;
+      color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      box-shadow: var(--shadow); overflow: hidden; animation: fadeIn 0.45s ease both;
+    }
+    .menu-btn:nth-child(1) { animation-delay: 0.05s; } .menu-btn:nth-child(2) { animation-delay: 0.08s; }
+    .menu-btn:nth-child(3) { animation-delay: 0.11s; } .menu-btn:nth-child(4) { animation-delay: 0.14s; }
+    .menu-btn:nth-child(5) { animation-delay: 0.17s; } .menu-btn:nth-child(6) { animation-delay: 0.2s; }
+    .menu-btn:nth-child(7) { animation-delay: 0.23s; } .menu-btn:nth-child(8) { animation-delay: 0.26s; }
+    .menu-btn:nth-child(9) { animation-delay: 0.29s; } .menu-btn:nth-child(10) { animation-delay: 0.32s; }
+    .menu-btn:nth-child(11) { animation-delay: 0.35s; }
+    .menu-btn::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.07), transparent 50%); pointer-events: none;
+    }
+    .menu-btn:active { transform: scale(0.94); }
+    .menu-btn .icon-wrap {
+      width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; background: linear-gradient(145deg, rgba(255,107,157,0.22), rgba(196,69,105,0.14));
+      transition: transform 0.3s; animation: float 3.5s ease-in-out infinite;
+    }
+    .menu-btn:nth-child(even) .icon-wrap { animation-delay: 0.4s; }
+    .menu-btn:active .icon-wrap { transform: scale(0.9); animation: none; }
+    .menu-btn.full {
+      grid-column: auto;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 8px;
+    }
+    .menu-btn.full .icon-wrap {
+      width: 48px; height: 48px; font-size: 24px;
+    }
+    .menu-btn.accent { background: linear-gradient(145deg, rgba(255,107,157,0.16), rgba(196,69,105,0.1)); border-color: rgba(255,107,157,0.28); }
+    .menu-btn.gold { background: linear-gradient(145deg, rgba(255,213,107,0.12), rgba(255,107,157,0.08)); border-color: rgba(255,213,107,0.28); }
+    .menu-btn.gold .icon-wrap { background: linear-gradient(145deg, rgba(255,213,107,0.28), rgba(255,107,157,0.14)); }
+    .stats { display: flex; justify-content: center; gap: 24px; margin-top: 14px; font-size: 12.5px; font-weight: 600; color: var(--muted); animation: fadeIn 0.5s ease 0.4s both; }
+    .stat-value { color: var(--accent); font-weight: 800; font-size: 14px; }
+    .footer { text-align: center; padding: 14px 0 4px; color: var(--muted); font-size: 11.5px; font-weight: 600; opacity: 0.85; }
+    .btn-back {
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--muted);
+      font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 14px; border-radius: 12px;
+      cursor: pointer; margin-bottom: 10px; align-self: flex-start; transition: all 0.2s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    [data-theme="light"] .btn-back { background: rgba(0,0,0,0.04); }
+    .btn-back:active { color: var(--text); transform: translateX(-2px); }
+    .game-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 6px 0 12px; }
+    .card {
+      background: var(--card); backdrop-filter: blur(18px); border: 1px solid var(--border);
+      border-radius: 26px; padding: 32px 22px; width: 100%; min-height: 220px;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      box-shadow: var(--shadow); position: relative; overflow: hidden;
+    }
+    .card.animating { animation: cardPop 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #ff6b9d, #c44569, #ffd56b, #ff6b9d);
+      background-size: 200% 100%; animation: shimmer 2.8s linear infinite;
+    }
+    .card-badge {
+      display: inline-flex; align-items: center; gap: 5px; background: rgba(255,107,157,0.15);
+      border: 1px solid rgba(255,107,157,0.3); color: var(--accent); font-size: 11.5px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 1px; padding: 5px 12px; border-radius: 18px; margin-bottom: 16px;
+    }
+    .card-text { font-size: 20px; line-height: 1.45; font-weight: 700; letter-spacing: -0.2px; }
+    .card-hint { margin-top: 14px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+    .dice-container {
+      display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 12px 0 6px; width: 100%;
+    }
+    .roulette-wrap {
+      position: relative;
+      width: 200px; height: 200px;
+      margin: 8px auto;
+    }
+    .roulette-wheel {
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 0deg,
+        #ff6b9d 0deg 45deg,
+        #c44569 45deg 90deg,
+        #ffd56b 90deg 135deg,
+        #ff8fab 135deg 180deg,
+        #e84a7f 180deg 225deg,
+        #ffe08a 225deg 270deg,
+        #ff5a8a 270deg 315deg,
+        #f0b429 315deg 360deg
+      );
+      box-shadow: 0 0 0 6px rgba(255,255,255,0.12), 0 12px 32px rgba(0,0,0,0.35);
+      transition: transform 0.1s linear;
+      position: relative;
+    }
+    .roulette-wheel::after {
+      content: '';
+      position: absolute;
+      inset: 28%;
+      border-radius: 50%;
+      background: var(--card-solid);
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .roulette-wheel.spinning {
+      animation: rouletteSpin 2.8s cubic-bezier(0.15, 0.7, 0.2, 1) forwards;
+    }
+    @keyframes rouletteSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(var(--spin-end, 1440deg)); }
+    }
+    .roulette-pointer {
+      position: absolute;
+      top: -6px; left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 22px solid var(--accent);
+      z-index: 5;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+    .roulette-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      font-size: 36px;
+      pointer-events: none;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .roulette-center.pop {
+      animation: centerPop 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes centerPop {
+      0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .roulette-result {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+      text-align: center;
+      min-height: 24px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .roulette-result.show { opacity: 1; }
+    .dice {
+      width: 72px; height: 72px; background: linear-gradient(145deg, #fff, #f0e6ff); border-radius: 16px;
+      display: none; align-items: center; justify-content: center; font-size: 32px;
+    }
+
+    .btn-row { display: flex; gap: 8px; width: 100%; margin-top: 6px; }
+    .btn {
+      flex: 1; padding: 15px 10px; border: none; border-radius: 16px; font-family: inherit;
+      font-size: 14.5px; font-weight: 800; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 6px; position: relative; overflow: hidden;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%); color: white; box-shadow: 0 6px 22px var(--accent-glow); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--border);
+      flex: 0 0 auto; min-width: 52px; padding: 15px;
+    }
+    [data-theme="light"] .btn-secondary { background: rgba(0,0,0,0.04); }
+    .btn-secondary.active-fav {
+      background: rgba(255,213,107,0.22); border-color: rgba(255,213,107,0.45); color: var(--gold);
+      animation: favPulse 0.4s ease;
+    }
+    @keyframes favPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    .panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+      padding: 20px; margin-bottom: 12px; box-shadow: var(--shadow); animation: fadeIn 0.45s ease;
+    }
+    .panel-title { font-size: 16px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .input {
+      width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border);
+      background: var(--input-bg); color: var(--text); font-family: inherit; font-size: 15px; font-weight: 600;
+      outline: none; transition: border 0.2s, box-shadow 0.2s;
+    }
+    .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,107,157,0.15); }
+    .input::placeholder { color: var(--muted); opacity: 0.7; }
+    .textarea { min-height: 90px; resize: vertical; line-height: 1.4; }
+    .code-display {
+      font-size: 32px; font-weight: 900; letter-spacing: 8px; text-align: center; color: var(--accent);
+      padding: 16px; background: rgba(255,107,157,0.1); border-radius: 16px; margin: 12px 0;
+      user-select: all; animation: cardPop 0.4s ease;
+    }
+    .hint-text { font-size: 13px; color: var(--muted); font-weight: 600; line-height: 1.45; margin-top: 8px; }
+    .list-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; -webkit-overflow-scrolling: touch; }
+    .list-item {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px;
+      font-size: 14.5px; font-weight: 600; line-height: 1.4; display: flex; align-items: flex-start; gap: 10px;
+      animation: fadeIn 0.3s ease; transition: transform 0.2s;
+    }
+    .list-item:active { transform: scale(0.98); }
+    .list-item .num {
+      flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; background: rgba(255,107,157,0.15);
+      color: var(--accent); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    }
+    .list-item .txt { flex: 1; }
+    .list-item .rm { flex-shrink: 0; background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; opacity: 0.6; padding: 0 2px; }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--muted); gap: 10px; padding: 40px 16px; }
+    .empty-state .big { font-size: 48px; opacity: 0.45; animation: float 3s ease-in-out infinite; }
+    .empty-state p { font-size: 14px; font-weight: 600; line-height: 1.5; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .chip {
+      padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--card);
+      color: var(--text); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .chip.active { background: rgba(255,107,157,0.2); border-color: var(--accent); color: var(--accent); transform: scale(1.04); }
+    .daily-badge {
+      display: inline-block; background: linear-gradient(135deg, #ff6b9d, #c44569); color: white;
+      font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 10px; margin-bottom: 10px;
+      letter-spacing: 0.5px; animation: float 2.5s ease-in-out infinite;
+    }
+    .toast {
+      position: fixed; bottom: calc(32px + var(--tg-safe-bottom)); left: 50%;
+      transform: translateX(-50%) translateY(100px); background: var(--card-solid); border: 1px solid var(--border);
+      color: var(--text); padding: 12px 24px; border-radius: 36px; font-size: 13.5px; font-weight: 700;
+      opacity: 0; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); z-index: 300;
+      box-shadow: 0 10px 36px rgba(0,0,0,0.4); pointer-events: none; white-space: nowrap; max-width: 90%;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .room-status { text-align: center; font-size: 12.5px; font-weight: 700; color: var(--success); margin-bottom: 8px; display: none; animation: fadeIn 0.3s ease; }
+    .room-status.on { display: block; }
+    .offline-badge {
+      position: fixed; top: calc(8px + var(--tg-safe-top)); left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px;
+      border-radius: 20px; z-index: 400; display: none; backdrop-filter: blur(8px);
+    }
+    .offline-badge.show { display: block; animation: fadeIn 0.3s ease; }
+    .tg-hint { text-align: center; font-size: 11px; color: var(--muted); margin-top: 8px; opacity: 0.7; display: none; }
+    .tg-hint.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="offline-badge" id="offlineBadge">📡 Офлайн-режим</div>
+  <div class="container">
+    <div id="menu" class="screen active">
+      <div class="header">
+        <div class="logo">Мы вдвоём 💕</div>
+        <div class="subtitle">вопросы · задания · близость</div>
+        <div class="top-bar">
+          <button class="icon-btn" id="soundBtn" onclick="toggleSound()" title="Звук">🔊</button>
+          <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="Тема">🌙</button>
+        </div>
+      </div>
+      <div class="intensity" data-level="light">
+        <div class="intensity-pill" aria-hidden="true"></div>
+        <button class="int-btn active" data-level="light"><span>😊</span> Лёгкий</button>
+        <button class="int-btn" data-level="romantic"><span>❤️</span> Романтика</button>
+        <button class="int-btn" data-level="spicy"><span>🔥</span> Острый</button>
+      </div>
+      <div class="menu-grid">
+        <button class="menu-btn" onclick="startMode('questions')"><div class="icon-wrap">💬</div>Вопросы</button>
+        <button class="menu-btn" onclick="startMode('tasks')"><div class="icon-wrap">🎯</div>Задания</button>
+        <button class="menu-btn" onclick="startMode('who')"><div class="icon-wrap">👀</div>Кто скорее?</button>
+        <button class="menu-btn" onclick="startMode('thisorthat')"><div class="icon-wrap">⚖️</div>Это или то</button>
+        <button class="menu-btn" onclick="startMode('truthordare')"><div class="icon-wrap">🎲</div>Правда / Действие</button>
+        <button class="menu-btn" onclick="startMode('dice')"><div class="icon-wrap">🎰</div>Кубик судьбы</button>
+        <button class="menu-btn full accent" onclick="openDaily()"><div class="icon-wrap">📅</div>Вопрос дня</button>
+        <button class="menu-btn full" onclick="startMode('random')"><div class="icon-wrap">✨</div>Случайный режим</button>
+        <button class="menu-btn full" onclick="openRoom()"><div class="icon-wrap">📡</div>На расстоянии</button>
+        <button class="menu-btn full gold" onclick="openFavorites()"><div class="icon-wrap">⭐</div>Избранное</button>
+        <button class="menu-btn full" onclick="openCustom()"><div class="icon-wrap">✏️</div>Мои вопросы</button>
+      </div>
+      <div class="stats">
+        <div>Сыграно: <span class="stat-value" id="statPlayed">0</span></div>
+        <div>★ <span class="stat-value" id="statFav">0</span></div>
+      </div>
+      <div class="footer">Передайте телефон или играйте по коду 💕</div>
+      <div class="tg-hint" id="tgHint">Свайп вниз или кнопка ✕ — закрыть</div>
+    </div>
+
+    <div id="game" class="screen">
+      <button class="btn-back" onclick="goHome()">← Меню</button>
+      <div class="room-status" id="roomStatus">📡 Комната · <span id="roomCodeShow"></span></div>
+      <div class="game-area">
+        <div class="card" id="gameCard">
+          <div class="card-badge" id="cardCategory">Вопрос</div>
+          <div class="card-text" id="cardText">Загрузка...</div>
+          <div class="card-hint" id="cardHint"></div>
+        </div>
+        <div class="dice-container" id="diceArea" style="display:none;">
+          <div class="roulette-wrap">
+            <div class="roulette-pointer"></div>
+            <div class="roulette-wheel" id="rouletteWheel"></div>
+            <div class="roulette-center" id="rouletteCenter">🎰</div>
+          </div>
+          <div class="roulette-result" id="rouletteResult"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="favBtn" onclick="toggleFavorite()">☆</button>
+        <button class="btn btn-secondary" onclick="shareCurrent()" title="Поделиться">📤</button>
+        <button class="btn btn-primary" id="nextBtn" onclick="nextCard()">Следующее →</button>
+      </div>
+    </div>
+
+    <div id="daily" class="screen">
+      <button class="btn-back" onclick="goHome()">← Меню</button>
+      <div class="game-area">
+        <div class="card" id="dailyCard">
+          <div class="daily-badge">📅 ВОПРОС ДНЯ</div>
+          <div class="card-text" id="dailyText">...</div>
+          <div class="card-hint" id="dailyHint">Обновится завтра</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="dailyFavBtn" onclick="toggleDailyFav()">☆</button>
+        <button class="btn btn-primary" onclick="goHome()">В меню</button>
+      </div>
+    </div>
+
+    <div id="room" class="screen">
+      <button class="btn-back" onclick="goHome()">← Меню</button>
+      <div class="panel">
+        <div class="panel-title">📡 Создать комнату</div>
+        <p class="hint-text">Сгенерируйте код и отправьте партнёру. Оба вводите один код — одинаковая последовательность карточек.</p>
+        <button class="btn btn-primary" style="margin-top:14px;width:100%;" onclick="createRoom()">Создать код</button>
+        <div id="createdCodeBlock" style="display:none;">
+          <div class="code-display" id="createdCode">------</div>
+          <button class="btn btn-secondary" style="width:100%;" onclick="copyCode()">📋 Скопировать</button>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="joinWithCreated()">Войти и играть</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🔑 Войти по коду</div>
+        <input class="input" id="joinCodeInput" placeholder="6-значный код" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;text-align:center;font-size:20px;">
+        <button class="btn btn-primary" style="margin-top:12px;width:100%;" onclick="joinRoom()">Присоединиться</button>
+      </div>
+      <p class="hint-text" style="text-align:center;padding:0 8px;">Код задаёт общий сид — карточки идут в одном порядке.</p>
+    </div>
+
+    <div id="custom" class="screen">
+      <button class="btn-back" onclick="goHome()">← Меню</button>
+      <div class="panel">
+        <div class="panel-title">✏️ Добавить карточку</div>
+        <div class="chip-row">
+          <button class="chip active" data-ctype="questions" onclick="setCustomType(this)">Вопрос</button>
+          <button class="chip" data-ctype="tasks" onclick="setCustomType(this)">Задание</button>
+          <button class="chip" data-ctype="who" onclick="setCustomType(this)">Кто скорее</button>
+        </div>
+        <textarea class="input textarea" id="customInput" placeholder="Текст карточки..."></textarea>
+        <button class="btn btn-primary" style="margin-top:12px;width:100%;" onclick="addCustom()">Добавить</button>
+      </div>
+      <div class="panel-title" style="margin:4px 0 8px;">Ваши карточки</div>
+      <div class="list-scroll" id="customList"></div>
+    </div>
+
+    <div id="favorites" class="screen">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <button class="btn-back" onclick="goHome()" style="margin:0;">← Меню</button>
+        <div style="font-size:18px;font-weight:800;">⭐ Избранное</div>
+        <div style="width:70px;"></div>
+      </div>
+      <div class="list-scroll" id="favList"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    let isTG = false;
+    function initTelegram() {
+      if (!tg) return;
+      isTG = true;
+      tg.ready();
+      tg.expand();
+      try {
+        const scheme = tg.colorScheme;
+        if (scheme === 'light' || scheme === 'dark') {
+          theme = scheme;
+          localStorage.setItem('mw_theme', theme);
+        }
+      } catch (e) {}
+      applyTheme();
+      try {
+        tg.BackButton.hide();
+        if (tg.MainButton) tg.MainButton.hide();
+        const bg = theme === 'dark' ? '#0f0a1a' : '#fff5f8';
+        tg.setHeaderColor(bg);
+        tg.setBackgroundColor(bg);
+      } catch (e) {}
+      document.getElementById('tgHint').classList.add('show');
+      try {
+        if (tg.safeAreaInset) {
+          document.documentElement.style.setProperty('--tg-safe-top', (tg.safeAreaInset.top || 0) + 'px');
+          document.documentElement.style.setProperty('--tg-safe-bottom', (tg.safeAreaInset.bottom || 0) + 'px');
+        }
+      } catch (e) {}
+    }
+    function tgHaptic(type) {
+      if (!tg || !tg.HapticFeedback) return;
+      try {
+        if (type === 'light') tg.HapticFeedback.impactOccurred('light');
+        else if (type === 'medium') tg.HapticFeedback.impactOccurred('medium');
+        else if (type === 'heavy') tg.HapticFeedback.impactOccurred('heavy');
+        else if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+        else if (type === 'selection') tg.HapticFeedback.selectionChanged();
+      } catch (e) {}
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+    window.addEventListener('online', () => document.getElementById('offlineBadge').classList.remove('show'));
+    window.addEventListener('offline', () => document.getElementById('offlineBadge').classList.add('show'));
+    if (!navigator.onLine) document.getElementById('offlineBadge').classList.add('show');
+
+    const data = {
+      questions: {
+        light: ["Какой твой самый странный страх?","Если бы ты мог(ла) стать любым животным на день — кем бы стал(а)?","Какая песня всегда поднимает тебе настроение?","Какой самый глупый поступок ты совершал(а) в детстве?","Если бы у тебя была суперсила — какая?","Какой фильм ты можешь пересматривать бесконечно?","Что тебя больше всего раздражает в людях?","Какой твой идеальный выходной?","Какое блюдо ты умеешь готовить лучше всего?","Если бы ты выиграл(а) миллион — на что потратил(а) первым делом?","Какой твой самый любимый мем?","В какой стране ты бы хотел(а) жить?","Какой твой самый странный талант?","Что ты обычно делаешь, когда скучно?","Какой запах тебе нравится больше всего?","Какой самый неловкий момент у тебя был?","Если бы мог(ла) прожить день заново — какой?","Какая еда тебя всегда радует?","Кем ты хотел(а) стать в детстве?","Какой твой любимый сезон и почему?","Что тебя больше всего смешит?","Какой гаджет ты бы никогда не отдал(а)?","Если бы завтра был выходной — как бы провёл(а)?","Какой самый странный сон помнишь?","Что ты коллекционируешь (или хотел бы)?"],
+        romantic: ["Что тебя в первый раз привлекло во мне?","Какой наш момент ты вспоминаешь чаще всего?","Что делает тебя счастливым(ой) в наших отношениях?","Как бы ты описал(а) нашу любовь одним словом?","Какой комплимент от меня тебе запомнился?","Что ты ценишь во мне больше всего?","Какое наше свидание было самым особенным?","Как ты понимаешь, что я тебя люблю?","О чём ты мечтаешь вместе со мной?","Какой жест с моей стороны тебя растапливает?","Что бы ты хотел(а), чтобы я делал(а) чаще?","Какой твой любимый способ проводить время со мной?","Что ты чувствуешь, когда мы обнимаемся?","Какой момент нашей истории хочешь пережить заново?","Чем я отличаюсь от всех, кого ты знал(а)?","Какой наш ритуал тебе особенно дорог?","Что хочешь, чтобы мы сделали вместе в этом году?","Как ты понял(а), что влюбился(ась)?","Какое моё качество тебя вдохновляет?","Если бы могли вернуться в любой день — какой?","Что чувствуешь, когда я беру тебя за руку?","Какой подарок от меня был самым трогательным?","О чём думаешь, когда смотришь на меня?","Какую одну вещь хочешь, чтобы я всегда помнил(а)?","Как бы ты хотел(а), чтобы мы старели вместе?"],
+        spicy: ["Какая часть моего тела тебе нравится больше всего?","Что тебя возбуждает во мне больше всего?","Какую фантазию хочешь осуществить со мной?","Где самое необычное место, где хотел(а) бы близости?","Какой мой наряд тебя больше всего заводит?","Что хочешь, чтобы я сделал(а) прямо сейчас?","Какой звук от меня тебя особенно возбуждает?","Опиши идеальный сексуальный вечер в деталях","Какую роль хочешь попробовать в постели?","Что никогда не пробовал(а), но очень хочешь?","Какой мой поцелуй тебе нравится больше всего?","Когда я беру инициативу или когда ты — что сильнее?","Какую тайну о желаниях ещё не рассказывал(а)?","Если бы могли прямо сейчас — как бы это произошло?","Что хочешь услышать от меня во время близости?","Какой мой запах тебя заводит?","Где больше всего любишь, когда я целую?","Какую игру хочешь попробовать в постели?","Слова или прикосновения — что возбуждает сильнее?","Какой момент близости вспоминаешь чаще?","Что хочешь, чтобы я делал(а) дольше?","Какую фантазию стесняешься озвучить?","Как предпочитаешь начинать интим?","Что возбуждает в моём характере?","Опиши, как хочешь, чтобы прошла наша следующая ночь"]
+      },
+      tasks: {
+        light: ["Сделай партнёру самый глупый комплимент","Изобрази, как выглядел(а) в 5 лет","Расскажи анекдот","Спой куплет любой песни","Покажи, как танцуешь, когда никто не видит","Сделай массаж плеч 1 минуту","Нарисуй портрет партнёра за 30 секунд","Придумай новое прозвище","Расскажи самый смешной случай с работы","Покажи любимую эмодзи-реакцию","Камень-ножницы-бумага — проигравший выполняет желание","Сделай тост и произнеси его","Покажи 3 фото из детства (или опиши)","Изобрази эмоцию, которую загадает партнёр","Напиши 3 вещи, которые нравятся в партнёре","Сделай партнёру чай с заботой","Расскажи историю как диктор новостей","Покажи лучший танцевальный мув","Придумай слоган для нашей пары","Сделай воздушный поцелуй максимально драматично"],
+        romantic: ["Посмотри в глаза 30 секунд","Скажи 3 вещи, которые любишь в партнёре","Обними так, будто не виделись год","Поцелуй в лоб, щёку, губы","Напиши «люблю» на ладони и поцелуй","Расскажи, каким видишь будущее через 5 лет","Сделай самый нежный комплимент","Обними сзади","Пошепчи на ухо что-то приятное","Поблагодари за что-то конкретное","Скажи «я тебя люблю» тремя способами","Поцелуй каждый палец на руке","Расскажи, какой момент сегодня сделал счастливым","Сделай сердечко руками","Положи голову на плечо 20 секунд","Скажи, за что особенно благодарен(на)","Обними и покачайся как в танце","Напиши пальцем на спине слово — угадай","Посмотри и скажи первое, что приходит в голову","Сделай «бабочку» — лёгкие поцелуи по лицу"],
+        spicy: ["Поцелуй так, будто последний","Массаж шеи, медленно ниже","Шепни самую горячую фантазию","Сними один предмет одежды (с согласия)","Поцелуй в шею 10 секунд","Опиши, что хочешь сделать прямо сейчас","Рука на бедро, медленно вверх","Скажи, какая часть тела заводит больше всего","Поцелуй в ключицу","Зажми у стены/дивана и поцелуй страстно","Проведи языком по шее","Скажи «хочу тебя» самым сексуальным голосом","Массаж внутренней стороны бедра (поверх одежды)","Поцелуй в мочку уха","1 минута — партнёр полностью ведёт","Опиши, как хочешь раздеть партнёра","Притяни за талию ближе","Поцелуй в ямочку над губой","Скажи, что бы сделал(а) в лифте вдвоём","Медленно проведи пальцами по губам"]
+      },
+      who: {
+        light: ["Кто скорее забудет день рождения?","Кто скорее потеряет ключи?","Кто заснёт во время фильма?","Кто лучше готовит?","Кто скорее опоздает?","Кто громче храпит?","Кто лучше танцует?","Кто купит что-то ненужное?","Кто лучше в технологиях?","Кто заплачет на грустном фильме?","Кто чаще делает селфи?","Кто лучше ориентируется?","Кто забудет выключить свет?","Кто громче смеётся?","Кто лучше врёт (в хорошем смысле)?","Кто заведёт новое хобби?","Кто дольше собирается?","Кто лучше поёт?","Кто проспит будильник?","Кто чаще говорит «давай останемся дома»?"],
+        romantic: ["Кто первым сказал «люблю»?","Кто чаще пишет первым?","Кто лучше утешает?","Кто чаще делает сюрпризы?","Кто сильнее ревнует?","Кто чаще инициирует поцелуи?","Кто лучше помнит даты?","Кто чаще говорит комплименты?","Кто более романтичный?","Кто первым извиняется?","Кто чаще говорит «скучаю»?","Кто лучше планирует свидания?","Кто чаще обнимает без причины?","Кто сильнее привязан?","Кто чаще смотрит с любовью?","Кто лучше чувствует настроение?","Кто чаще пишет длинные сообщения?","Кто первым просыпается и целует?","Кто чаще говорит «мы»?","Кто сильнее верит в «навсегда»?"],
+        spicy: ["Кто чаще начинает интим?","Кто более экспериментирующий?","Кто громче во время близости?","Кто чаще смотрит порно?","Кто чувствительнее к прикосновениям?","Кто дольше сдерживается?","Кто чаще думает о сексе?","Кто более доминирующий?","Кто лучше целуется?","Кто скорее согласится на новое?","Кто чаще фантазирует о партнёре?","Кто более страстный?","Кто лучше знает эрогенные зоны?","Кто чаще берёт инициативу в поцелуе?","Кто открытее к экспериментам?","Кто дольше «разгоняется»?","Кто чаще предлагает «давай попробуем»?","Кто громче выражает удовольствие?","Кто лучше соблазняет?","Кто скорее устроит сюрприз в постели?"]
+      },
+      thisorthat: {
+        light: ["Море или горы?","Утро или вечер?","Кофе или чай?","Кино дома или в кинотеатре?","Лето или зима?","Книга или сериал?","Сладкое или солёное?","Город или деревня?","Собака или кошка?","Тишина или музыка?","Пицца или суши?","Дождь или снег?","Утро с кофе или вечер с вином?","Путешествие или отдых дома?","Комедия или драма?","Спорт или йога?","Фото или видео?","Планировать или спонтанно?","Один большой подарок или много маленьких?","Утро или ночь для важных разговоров?"],
+        romantic: ["Большое путешествие или уютный дом?","Страстный поцелуй или долгие объятия?","Сюрприз или спланированное свидание?","Письмо от руки или голосовое?","Танец под дождём или прогулка под звёздами?","Завтрак в постели или ужин при свечах?","Комплимент внешности или характеру?","Цветы или вкусный ужин?","Объятия сзади или лицом к лицу?","Долгий взгляд или нежный поцелуй?","Совместный душ или ванна?","Утро вместе или вечер вместе?","Говорить о будущем или наслаждаться сейчас?","Подарок-впечатление или вещь?","Тихий вечер или шумная вечеринка вдвоём?","Держаться за руки или за талию?","Сказать «люблю» или показать делами?","Один идеальный день или много хороших?","Романтический фильм или комедия?","Долгие на расстоянии или короткие рядом?"],
+        spicy: ["Свет включён или выключен?","Утром или ночью?","Быстро и страстно или медленно и нежно?","Доминировать или подчиняться?","В душе или в постели?","С музыкой или в тишине?","Слова или действия?","Фантазии рассказывать или показывать?","Один раз долго или несколько коротко?","Риск публичного места или приватность?","Связанные руки или свободные?","Сверху или снизу?","Глаза открыты или закрыты?","Массаж маслом или руками?","Ролевые игры или «как есть»?","Разбудить поцелуями или не отпускать ночью?","Громко или шёпотом?","Новое место или любимая постель?","Контроль или полная отдача?","Фантазия в голове или в реальности?"]
+      },
+      truth: {
+        light: ["Какой самый большой страх в отношениях?","Был момент, когда почти расстался(ась)?","Что больше всего бесит во мне?","О чём чаще всего врёшь?","Самый стыдный поступок?","Кого из друзей считаешь самым привлекательным?","Какую привычку партнёра хочешь изменить?","Был краш на кого-то, пока мы вместе?","Что скрываешь до сих пор?","Какой комплимент неприятен?","О чём жалеешь в нашей истории?","Самый глупый спор у нас?","Что думаешь, когда долго не отвечаю?","Есть тема, о которой боишься говорить?","Какой мой поступок тебя больше всего удивил?"],
+        romantic: ["Что чувствовал(а), когда понял(а), что влюбился(ась)?","Есть мечта, о которой боишься сказать?","Какой наш момент был самым важным?","Что сделаешь, если я исчезну на неделю?","Чего боишься потерять в отношениях?","Как представляешь нашу свадьбу?","Что хочешь изменить в отношениях?","Что ценишь в том, как я тебя люблю?","Был момент сомнений в нас?","Что делает тебя уязвимым(ой) рядом со мной?","О чём думаешь перед сном, когда мы вместе?","Какой мой жест всегда успокаивает?","Что хочешь, чтобы я знал(а) о чувствах?","Какой момент поворотный в нашей истории?","Чего больше всего ждёшь от будущего?"],
+        spicy: ["Самая грязная фантазия обо мне?","С кем из известных занялся(ась) бы сексом?","Самый странный сексуальный опыт?","Что возбуждает, но стесняешься признаться?","Думал(а) обо мне во время... с собой?","Какую роль хочешь, чтобы я сыграл(а)?","Что хочешь попробовать, но боишься предложить?","Какой мой стон тебя заводит?","Ревновал(а) в сексуальном плане?","Опиши самый горячий сон со мной","Какую часть тела хочешь, чтобы целовал(а) дольше?","Что больше всего возбуждает в нашей близости?","Есть слово/фраза, от которой «включает»?","Какой момент интима хочешь повторять?","Что хочешь услышать в самый страстный момент?"]
+      },
+      dare: {
+        light: ["Сделай 10 отжиманий","Спой гимн любой страны","Изобрази животное, которое загадает партнёр","Позвони другу «я тебя люблю» и положи трубку","Съешь что-то с закрытыми глазами","Станцуй 30 секунд под выбор партнёра","Говори минуту с акцентом","Покажи самый неудачный селфи","Напиши статус то, что скажет партнёр","Сделай бутерброд с закрытыми глазами","Изобрази, как ходишь в 70 лет","Скажи тост максимально пафосно","Спой рекламный джингл","Покажи «серьёзный» взгляд 10 секунд","Сделай комплимент предмету в комнате"],
+        romantic: ["Скажи 5 причин, почему любишь меня","Массаж ног 2 минуты","Напиши любовное сообщение сейчас","Поцелуй туда, куда укажу","Расскажи историю знакомства как сказку","Медленный танец (даже без музыки)","Нарисуй сердце на руке и поцелуй","Скажи на ухо, что чувствуешь сейчас","Сделай чай/кофе как я люблю","Обними и не отпускай 1 минуту","В глаза — самое нежное, что думаешь","Поцелуй в щёки, нос, губы","Скажи «скучал(а)» будто не виделись месяц","Поцелуй внутреннюю сторону запястья","Расскажи идеальный день вместе"],
+        spicy: ["Сними один предмет одежды","Поцелуй туда, куда укажу","Шепни самую грязную вещь, которую хочешь","Массаж с маслом/кремом 2 минуты","Завяжи глаза на 1 минуту","Опиши в деталях, как хочешь меня сейчас","Поцелуй будто мы одни в мире","Положи мою руку туда, куда хочешь","«Стоп» только когда правда захочешь","Роль соблазнителя — 1 минута","Губы по шее вверх-вниз","На ухо — что будешь делать ночью","Позволь снять ещё один предмет","Поцелуй ключицу, потом ниже","Притяни за талию максимально близко"]
+      }
+    };
+    const dailyPool = [
+      "За что ты сегодня благодарен(на) в наших отношениях?",
+      "Какой маленький жест с моей стороны всегда тебя радует?",
+      "О чём ты мечтал(а) сегодня, глядя на меня (или вспоминая)?",
+      "Что бы ты хотел(а) сделать вместе в ближайшие выходные?",
+      "Какой комплимент ты давно хотел(а) мне сказать?",
+      "Что тебя больше всего успокаивает, когда рядом я?",
+      "Какой наш совместный момент этой недели был самым тёплым?",
+      "Если бы сегодня был идеальный вечер — как бы он прошёл?",
+      "Что ты ценишь во мне прямо сейчас, в эту минуту?",
+      "Какую одну вещь ты хочешь, чтобы я сделал(а) для тебя сегодня?",
+      "О чём ты думаешь, когда мы молчим рядом?",
+      "Какой запах, звук или вкус ассоциируется у тебя с «нами»?",
+      "Что бы ты написал(а) мне в письме, если бы не мог(ла) говорить?",
+      "Какой страх в отношениях ты готов(а) отпустить?",
+      "Чему мы научились друг у друга за последнее время?"
+    ];
+
+    let currentLevel = 'light', currentMode = null, currentList = [], currentIndex = 0, currentText = '', dailyText = '';
+    let roomSeed = null, roomCode = null, customType = 'questions';
+    let soundOn = localStorage.getItem('mw_sound') !== '0';
+    let theme = localStorage.getItem('mw_theme') || 'dark';
+    let played = parseInt(localStorage.getItem('mw_played') || '0');
+    let favorites = JSON.parse(localStorage.getItem('mw_favorites') || '[]');
+    let customs = JSON.parse(localStorage.getItem('mw_customs') || '[]');
+
+    function mulberry32(a) {
+      return function() {
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    function seedFromCode(code) {
+      let h = 0;
+      for (let i = 0; i < code.length; i++) h = Math.imul(31, h) + code.charCodeAt(i) | 0;
+      return Math.abs(h);
+    }
+    function shuffleSeeded(arr, seed) {
+      const a = [...arr];
+      const rand = mulberry32(seed);
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    let audioCtx = null;
+    function getAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+    function playTone(freq, dur, type = 'sine', vol = 0.08) {
+      if (!soundOn) return;
+      try {
+        const ctx = getAudio();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type; o.frequency.value = freq; g.gain.value = vol;
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+        o.stop(ctx.currentTime + dur);
+      } catch (e) {}
+    }
+    function sfx(name) {
+      if (name === 'click') { playTone(600, 0.05); vibe(8); tgHaptic('light'); }
+      if (name === 'next') { playTone(520, 0.05); playTone(720, 0.07); vibe(12); tgHaptic('medium'); }
+      if (name === 'fav') { playTone(880, 0.1, 'triangle'); vibe([10, 30, 10]); tgHaptic('success'); }
+      if (name === 'success') { playTone(523, 0.07); setTimeout(() => playTone(659, 0.09), 70); vibe(15); tgHaptic('success'); }
+      if (name === 'dice') { playTone(200, 0.04); setTimeout(() => playTone(400, 0.05), 50); setTimeout(() => playTone(600, 0.07), 100); vibe([20, 40, 20]); tgHaptic('heavy'); }
+    }
+    function vibe(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      localStorage.setItem('mw_sound', soundOn ? '1' : '0');
+      document.getElementById('soundBtn').textContent = soundOn ? '🔊' : '🔇';
+      sfx('click');
+      showToast(soundOn ? 'Звук включён' : 'Звук выключен');
+    }
+    function toggleTheme() {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('mw_theme', theme);
+      applyTheme();
+      sfx('click');
+      if (isTG) {
+        try {
+          const bg = theme === 'dark' ? '#0f0a1a' : '#fff5f8';
+          tg.setHeaderColor(bg);
+          tg.setBackgroundColor(bg);
+        } catch (e) {}
+      }
+    }
+    function applyTheme() {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.content = theme === 'dark' ? '#0f0a1a' : '#fff5f8';
+    }
+
+    initTelegram();
+    applyTheme();
+    document.getElementById('soundBtn').textContent = soundOn ? '🔊' : '🔇';
+    updateStats();
+
+    const intensityEl = document.querySelector('.intensity');
+    if (intensityEl) {
+      intensityEl.setAttribute('data-level', currentLevel);
+      document.body.setAttribute('data-level', currentLevel);
+    }
+
+    document.querySelectorAll('.int-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('active')) return;
+        const level = btn.dataset.level;
+        document.querySelectorAll('.int-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentLevel = level;
+        if (intensityEl) {
+          intensityEl.setAttribute('data-level', level);
+          intensityEl.classList.add('switching');
+          setTimeout(() => intensityEl.classList.remove('switching'), 400);
+        }
+        document.body.setAttribute('data-level', level);
+        const grid = document.querySelector('.menu-grid');
+        if (grid) {
+          grid.classList.remove('level-flash');
+          void grid.offsetWidth;
+          grid.classList.add('level-flash');
+        }
+        sfx('click');
+        tgHaptic('selection');
+        const labels = { light: 'Лёгкий режим', romantic: 'Романтика', spicy: 'Острый режим' };
+        showToast(labels[level] || level);
+      });
+    });
+
+    function updateStats() {
+      document.getElementById('statPlayed').textContent = played;
+      document.getElementById('statFav').textContent = favorites.length;
+    }
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+    function goHome() {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('menu').classList.add('active');
+      document.getElementById('diceArea').style.display = 'none';
+      sfx('click');
+      if (isTG && tg.BackButton) try { tg.BackButton.hide(); } catch(e) {}
+    }
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if (isTG && tg.BackButton && id !== 'menu') {
+        try { tg.BackButton.show(); tg.BackButton.onClick(goHome); } catch(e) {}
+      }
+    }
+    function animCard() {
+      const card = document.getElementById('gameCard');
+      card.classList.remove('animating');
+      void card.offsetWidth;
+      card.classList.add('animating');
+    }
+
+    function getMergedList(mode, level) {
+      let list = [...(data[mode]?.[level] || [])];
+      list = list.concat(customs.filter(c => c.type === mode).map(c => c.text));
+      return list;
+    }
+
+    function startMode(mode) {
+      currentMode = mode;
+      currentIndex = 0;
+      if (mode === 'random') {
+        const modes = ['questions', 'tasks', 'who', 'thisorthat', 'truthordare'];
+        currentMode = modes[Math.floor(Math.random() * modes.length)];
+      }
+      if (currentMode === 'dice') prepareDice();
+      else if (currentMode === 'truthordare') currentList = [];
+      else {
+        const list = getMergedList(currentMode, currentLevel);
+        currentList = roomSeed != null ? shuffleSeeded(list, roomSeed + currentMode.charCodeAt(0)) : shuffle(list);
+      }
+      showScreen('game');
+      updateRoomStatus();
+      nextCard();
+      sfx('click');
+    }
+
+    function nextCard() {
+      played++;
+      localStorage.setItem('mw_played', played);
+      updateStats();
+      sfx('next');
+      animCard();
+      const cardText = document.getElementById('cardText');
+      const cardCategory = document.getElementById('cardCategory');
+      const cardHint = document.getElementById('cardHint');
+      document.getElementById('diceArea').style.display = 'none';
+
+      if (currentMode === 'dice') { rollDice(); return; }
+
+      if (currentMode === 'truthordare') {
+        const isTruth = Math.random() > 0.45;
+        const key = isTruth ? 'truth' : 'dare';
+        const pool = data[key][currentLevel];
+        let item;
+        if (roomSeed != null) {
+          const seeded = shuffleSeeded(pool, roomSeed + currentIndex + (isTruth ? 1 : 2));
+          item = seeded[currentIndex % seeded.length];
+        } else item = pool[Math.floor(Math.random() * pool.length)];
+        currentIndex++;
+        currentText = item;
+        cardCategory.textContent = isTruth ? '💬 Правда' : '🎯 Действие';
+        cardText.textContent = item;
+        cardHint.textContent = isTruth ? 'Отвечай честно' : 'Выполни задание';
+        updateFavButton();
+        return;
+      }
+
+      if (currentIndex >= currentList.length) {
+        const list = getMergedList(currentMode, currentLevel);
+        currentList = roomSeed != null ? shuffleSeeded(list, roomSeed + (Date.now() % 1000)) : shuffle(list);
+        currentIndex = 0;
+        showToast('Колода перемешана 🔄');
+      }
+      currentText = currentList[currentIndex];
+      currentIndex++;
+      const categories = { questions: '💬 Вопрос', tasks: '🎯 Задание', who: '👀 Кто скорее?', thisorthat: '⚖️ Это или то' };
+      cardCategory.textContent = categories[currentMode] || 'Игра';
+      cardText.textContent = currentText;
+      if (currentMode === 'who') cardHint.textContent = 'Укажите пальцем на того, кто...';
+      else if (currentMode === 'thisorthat') cardHint.textContent = 'Выберите один вариант и объясните';
+      else if (currentMode === 'tasks') cardHint.textContent = 'Выполни задание';
+      else cardHint.textContent = 'Ответьте оба';
+      updateFavButton();
+    }
+
+    let rouletteBusy = false;
+    const rouletteActions = [
+      { emoji: '💋', text: 'Поцелуй в губы' },
+      { emoji: '🤗', text: 'Крепкое объятие' },
+      { emoji: '👀', text: 'Задай вопрос партнёру' },
+      { emoji: '🎯', text: 'Выполни желание партнёра' },
+      { emoji: '🔥', text: 'Страстный поцелуй в шею' },
+      { emoji: '💬', text: 'Скажи комплимент' },
+      { emoji: '✨', text: 'Сюрприз на выбор партнёра' },
+      { emoji: '🌹', text: 'Нежное прикосновение' }
+    ];
+
+    function prepareDice() {
+      document.getElementById('cardCategory').textContent = '🎰 Кубик судьбы';
+      document.getElementById('cardText').textContent = 'Крути рулетку — выпадет задание';
+      document.getElementById('cardHint').textContent = 'Нажми «Следующее»';
+      document.getElementById('diceArea').style.display = 'flex';
+      const wheel = document.getElementById('rouletteWheel');
+      const center = document.getElementById('rouletteCenter');
+      const result = document.getElementById('rouletteResult');
+      if (wheel) {
+        wheel.classList.remove('spinning');
+        wheel.style.transform = 'rotate(0deg)';
+        wheel.style.removeProperty('--spin-end');
+      }
+      if (center) { center.textContent = '🎰'; center.classList.remove('pop'); }
+      if (result) { result.textContent = ''; result.classList.remove('show'); }
+      currentText = '';
+      rouletteBusy = false;
+      updateFavButton();
+    }
+
+    function rollDice() {
+      if (rouletteBusy) return;
+      rouletteBusy = true;
+      sfx('dice');
+      const wheel = document.getElementById('rouletteWheel');
+      const center = document.getElementById('rouletteCenter');
+      const result = document.getElementById('rouletteResult');
+      const cardText = document.getElementById('cardText');
+      const cardHint = document.getElementById('cardHint');
+
+      const idx = Math.floor(Math.random() * rouletteActions.length);
+      const item = rouletteActions[idx];
+      // 4-6 full turns + segment (each segment 45deg), pointer at top
+      const turns = 4 + Math.floor(Math.random() * 3);
+      const segment = 45;
+      const target = turns * 360 + (360 - idx * segment - segment / 2);
+
+      if (result) { result.classList.remove('show'); result.textContent = ''; }
+      if (center) { center.textContent = '✨'; center.classList.remove('pop'); }
+      cardText.textContent = 'Крутится...';
+      cardHint.textContent = '';
+
+      if (wheel) {
+        wheel.classList.remove('spinning');
+        wheel.style.transition = 'none';
+        wheel.style.transform = 'rotate(0deg)';
+        void wheel.offsetWidth;
+        wheel.style.removeProperty('transition');
+        wheel.style.setProperty('--spin-end', target + 'deg');
+        wheel.classList.add('spinning');
+      }
+
+      setTimeout(() => {
+        currentText = item.emoji + ' ' + item.text;
+        if (center) {
+          center.textContent = item.emoji;
+          center.classList.add('pop');
+        }
+        if (result) {
+          result.textContent = item.text;
+          result.classList.add('show');
+        }
+        cardText.textContent = currentText;
+        cardHint.textContent = 'Выполни прямо сейчас';
+        document.getElementById('cardCategory').textContent = '🎰 Кубик судьбы';
+        animCard();
+        updateFavButton();
+        rouletteBusy = false;
+        sfx('success');
+      }, 2900);
+    }
+
+    function updateFavButton() {
+      const btn = document.getElementById('favBtn');
+      if (!currentText) { btn.textContent = '☆'; btn.classList.remove('active-fav'); return; }
+      if (favorites.includes(currentText)) { btn.textContent = '★'; btn.classList.add('active-fav'); }
+      else { btn.textContent = '☆'; btn.classList.remove('active-fav'); }
+    }
+    function toggleFavorite() {
+      if (!currentText) return;
+      if (favorites.includes(currentText)) {
+        favorites = favorites.filter(f => f !== currentText);
+        showToast('Удалено из избранного');
+      } else {
+        favorites.unshift(currentText);
+        showToast('Добавлено в избранное ★');
+        sfx('fav');
+      }
+      localStorage.setItem('mw_favorites', JSON.stringify(favorites));
+      updateStats();
+      updateFavButton();
+    }
+    function openFavorites() { showScreen('favorites'); renderFavorites(); sfx('click'); }
+    function renderFavorites() {
+      const list = document.getElementById('favList');
+      if (!favorites.length) {
+        list.innerHTML = '<div class="empty-state"><div class="big">⭐</div><p>Пока пусто.<br>Нажимайте ★ во время игры.</p></div>';
+        return;
+      }
+      list.innerHTML = favorites.map((text, i) =>
+        '<div class="list-item"><div class="num">' + (i+1) + '</div><div class="txt">' + esc(text) + '</div><button class="rm" onclick="removeFavorite(' + i + ')">✕</button></div>'
+      ).join('');
+    }
+    function removeFavorite(i) {
+      favorites.splice(i, 1);
+      localStorage.setItem('mw_favorites', JSON.stringify(favorites));
+      updateStats();
+      renderFavorites();
+      showToast('Удалено');
+      sfx('click');
+    }
+
+    function openDaily() {
+      const today = new Date().toISOString().slice(0, 10);
+      const saved = localStorage.getItem('mw_daily_date');
+      let idx;
+      if (saved === today) idx = parseInt(localStorage.getItem('mw_daily_idx') || '0');
+      else {
+        idx = Math.abs(seedFromCode(today)) % dailyPool.length;
+        localStorage.setItem('mw_daily_date', today);
+        localStorage.setItem('mw_daily_idx', idx);
+      }
+      dailyText = dailyPool[idx];
+      document.getElementById('dailyText').textContent = dailyText;
+      document.getElementById('dailyHint').textContent = 'Обновится завтра · ' + formatDate(today);
+      updateDailyFavBtn();
+      showScreen('daily');
+      const dc = document.getElementById('dailyCard');
+      dc.classList.remove('animating');
+      void dc.offsetWidth;
+      dc.classList.add('animating');
+      sfx('success');
+    }
+    function formatDate(iso) {
+      const p = iso.split('-');
+      return p[2] + '.' + p[1] + '.' + p[0];
+    }
+    function updateDailyFavBtn() {
+      const btn = document.getElementById('dailyFavBtn');
+      if (favorites.includes(dailyText)) { btn.textContent = '★'; btn.classList.add('active-fav'); }
+      else { btn.textContent = '☆'; btn.classList.remove('active-fav'); }
+    }
+    function toggleDailyFav() {
+      if (!dailyText) return;
+      if (favorites.includes(dailyText)) {
+        favorites = favorites.filter(f => f !== dailyText);
+        showToast('Удалено');
+      } else {
+        favorites.unshift(dailyText);
+        showToast('В избранное ★');
+        sfx('fav');
+      }
+      localStorage.setItem('mw_favorites', JSON.stringify(favorites));
+      updateStats();
+      updateDailyFavBtn();
+    }
+
+    function openRoom() {
+      showScreen('room');
+      document.getElementById('createdCodeBlock').style.display = 'none';
+      document.getElementById('joinCodeInput').value = '';
+      sfx('click');
+    }
+    function generateCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    }
+    function createRoom() {
+      roomCode = generateCode();
+      roomSeed = seedFromCode(roomCode);
+      document.getElementById('createdCode').textContent = roomCode;
+      document.getElementById('createdCodeBlock').style.display = 'block';
+      localStorage.setItem('mw_room', JSON.stringify({ code: roomCode, seed: roomSeed }));
+      sfx('success');
+      showToast('Комната создана');
+    }
+    function copyCode() {
+      const code = document.getElementById('createdCode').textContent;
+      navigator.clipboard?.writeText(code).then(() => showToast('Код скопирован')).catch(() => showToast(code));
+      sfx('click');
+    }
+    function joinWithCreated() {
+      updateRoomStatus();
+      showToast('Вы в комнате ' + roomCode);
+      goHome();
+      sfx('success');
+    }
+    function joinRoom() {
+      const input = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+      if (input.length < 4) { showToast('Введите код'); return; }
+      roomCode = input;
+      roomSeed = seedFromCode(roomCode);
+      localStorage.setItem('mw_room', JSON.stringify({ code: roomCode, seed: roomSeed }));
+      updateRoomStatus();
+      showToast('Вы в комнате ' + roomCode);
+      goHome();
+      sfx('success');
+    }
+    function updateRoomStatus() {
+      const el = document.getElementById('roomStatus');
+      if (roomCode) {
+        el.classList.add('on');
+        document.getElementById('roomCodeShow').textContent = roomCode;
+      } else el.classList.remove('on');
+    }
+    (function() {
+      try {
+        const r = JSON.parse(localStorage.getItem('mw_room') || 'null');
+        if (r && r.code) { roomCode = r.code; roomSeed = r.seed; }
+      } catch (e) {}
+    })();
+
+    function shareCurrent() {
+      if (!currentText) return;
+      const text = 'Мы вдвоём 💕\n' + currentText + (roomCode ? '\n\nКод комнаты: ' + roomCode : '');
+      if (navigator.share) navigator.share({ text }).catch(() => {});
+      else navigator.clipboard?.writeText(text).then(() => showToast('Скопировано')).catch(() => showToast(text));
+      sfx('click');
+    }
+
+    function openCustom() { showScreen('custom'); renderCustoms(); sfx('click'); }
+    function setCustomType(el) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      customType = el.dataset.ctype;
+      sfx('click');
+    }
+    function addCustom() {
+      const text = document.getElementById('customInput').value.trim();
+      if (!text) { showToast('Введите текст'); return; }
+      customs.unshift({ type: customType, text, id: Date.now() });
+      localStorage.setItem('mw_customs', JSON.stringify(customs));
+      document.getElementById('customInput').value = '';
+      renderCustoms();
+      showToast('Добавлено ✓');
+      sfx('success');
+    }
+    function renderCustoms() {
+      const list = document.getElementById('customList');
+      if (!customs.length) {
+        list.innerHTML = '<div class="empty-state"><div class="big">✏️</div><p>Своих карточек пока нет.<br>Добавьте — они появятся в игре.</p></div>';
+        return;
+      }
+      const typeNames = { questions: 'Вопрос', tasks: 'Задание', who: 'Кто скорее' };
+      list.innerHTML = customs.map((c, i) =>
+        '<div class="list-item"><div class="num">' + (typeNames[c.type]||'?')[0] + '</div><div class="txt"><small style="color:var(--muted);font-size:11px;">' + (typeNames[c.type]||c.type) + '</small><br>' + esc(c.text) + '</div><button class="rm" onclick="removeCustom(' + i + ')">✕</button></div>'
+      ).join('');
+    }
+    function removeCustom(i) {
+      customs.splice(i, 1);
+      localStorage.setItem('mw_customs', JSON.stringify(customs));
+      renderCustoms();
+      showToast('Удалено');
+      sfx('click');
+    }
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>
