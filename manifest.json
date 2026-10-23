@@ -1,0 +1,19 @@
+{
+  "name": "Мы вдвоём",
+  "short_name": "Мы вдвоём",
+  "description": "Игра для пар: вопросы, задания, близость",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0a1a",
+  "theme_color": "#0f0a1a",
+  "orientation": "portrait",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icon-640x360.jpg",
+      "sizes": "640x360",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
